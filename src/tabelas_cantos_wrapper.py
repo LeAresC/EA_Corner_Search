@@ -71,24 +71,10 @@ def _limites(valor, n_var):
     return np.full(n_var, float(v)) if v.ndim == 0 else v.reshape(n_var)
 
 
-AJUSTES_VALIDOS = ("K", "rho", "p_aleatorio", "frac_fase1", "frac_tabelas", "eixo_variavel", "intervalo_eixo")
+AJUSTES_VALIDOS = ("K", "rho", "p_aleatorio", "frac_fase1", "frac_tabelas", "intervalo_eixo")
 
 
 class TabelasCantos(mb.moeas.BaseMoea):
-    """Busca de cantos por tabelas adaptativas (fase 1) e distribuição por ângulo (fase 2).
-    O algoritmo está em src/tabelas_cantos.py.
-
-    Orçamento: population * (generations + 1) avaliações. A fase 1 usa até frac_fase1 dele.
-
-    Uso:
-        alg = TabelasCantos(problem=..., population=..., generations=..., seed=...)
-        alg = TabelasCantos(..., K=8, frac_fase1=0.6)       # ajustes pontuais
-    Ajustes aceitos: K, rho, p_aleatorio, frac_fase1, frac_tabelas, eixo_variavel, intervalo_eixo.
-    eixo_variavel=True reestima o eixo central a cada intervalo_eixo do orçamento (padrão: eixo fixo).
-    Trata restrições (factível primeiro). Depois da execução, alg.info traz as âncoras
-    permanentes (permanentes_X, permanentes_F), o melhor de cada tabela (ancoras_X,
-    ancoras_F), o fim da fase 1 (fim_fase1, em avaliações) e as avaliações gastas.
-    """
 
     def __init__(self, problem=None, population=None, generations=None, seed=None, **ajustes):
         super().__init__(problem, population, generations, seed)
@@ -115,7 +101,7 @@ class TabelasCantos(mb.moeas.BaseMoea):
         def avaliar(X01):
             X_eval = xl + np.asarray(X01) * (xu - xl)
             n = len(X_eval)
-            # A chamada a evaluation_benchmark e OBRIGATORIA (contagem de avaliacoes do framework).
+
             resultado = self.evaluation_benchmark(X_eval)
             F = _normalize_objectives(resultado["F"], n, n_obj)
             if "G" in resultado:
@@ -135,16 +121,16 @@ class TabelasCantos(mb.moeas.BaseMoea):
             self.F_nd_gens.append(F[nd].copy()); self.X_nd_gens.append(X[nd].copy())
             self.F_dom_gens.append(F[~nd].copy()); self.X_dom_gens.append(X[~nd].copy())
             pbar = get_active_pbar()
-            if pbar:   # progresso pelas avaliacoes gastas, convertidas em geracoes
+            if pbar:
                 pbar.update_to(min(max(self.fes_gasto // self.population - 1, 0), self.generations))
 
         X01, F, CV, self.info = executa(
             avaliar, n_obj=n_obj, n_var=n_var, N=self.population, n_ger=self.generations,
-            seed=self.seed, callback=registra, **self.ajustes,frac_fase1=0.5,
+            seed=self.seed, callback=registra, **self.ajustes,
         )
 
         pbar = get_active_pbar()
-        if pbar:       # fecha a barra em 100%
+        if pbar:
             pbar.update_to(self.generations)
 
         F_final = F[frentes_com_restricao(F, CV) == 0]
